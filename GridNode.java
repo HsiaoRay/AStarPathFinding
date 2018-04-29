@@ -86,32 +86,16 @@ public class GridNode {
         return x;
     }
 
-    public void setX(double x) {
-        this.x = x;
-    }
-
     public double getY() {
         return y;
-    }
-
-    public void setY(double y) {
-        this.y = y;
     }
 
     public Map<Integer, GridNode> getNeighbors() {
         return neighbors;
     }
 
-    public void setNeighbors(Map<Integer, GridNode> neighbors) {
-        this.neighbors = neighbors;
-    }
-
     public boolean isWalkable() {
         return isWalkable;
-    }
-
-    public void setWalkable(boolean walkable) {
-        isWalkable = walkable;
     }
 
     public void clear() {
