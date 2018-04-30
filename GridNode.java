@@ -1,3 +1,4 @@
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -21,7 +22,7 @@ public class GridNode {
 
     private double y;
 
-    private Map<Integer, GridNode> neighbors;
+    private Map<Integer, GridNode> neighbors = new HashMap<>();
 
     private boolean isWalkable = true;
 
@@ -102,46 +103,9 @@ public class GridNode {
         g = h = f = 0;
         parent = null;
     }
+    
 
-    public boolean isWalkable(int direction) {
-        if (!isWalkable)
-            return false;
-        GridNode temp;
-        if (direction == LEFT_UP) {
-            temp = neighbors.get(RIGHT);
-            if (temp == null || !temp.isWalkable())
-                return false;
-            temp = neighbors.get(BOTTOM);
-            if (temp == null || !temp.isWalkable())
-                return false;
-        }
-
-        if (direction == LEFT_BOTTOM) {
-            temp = neighbors.get(LEFT);
-            if (temp == null || !temp.isWalkable())
-                return false;
-            temp = neighbors.get(UP);
-            if (temp == null || !temp.isWalkable())
-                return false;
-        }
-
-        if (direction == RIGHT_UP) {
-            temp = neighbors.get(LEFT);
-            if (temp == null || !temp.isWalkable())
-                return false;
-            temp = neighbors.get(BOTTOM);
-            if (temp == null || !temp.isWalkable())
-                return false;
-        }
-        if (direction == RIGHT_BOTTOM) {
-            temp = neighbors.get(LEFT);
-            if (temp == null || !temp.isWalkable())
-                return false;
-            temp = neighbors.get(UP);
-            if (temp == null || !temp.isWalkable())
-                return false;
-        }
-
-        return true;
+    public void setWalkable(boolean walkable) {
+        isWalkable = walkable;
     }
 }
