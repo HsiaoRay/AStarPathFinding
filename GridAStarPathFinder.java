@@ -2,18 +2,9 @@ import java.util.*;
 
 public class GridAStarPathFinder {
 
-    /**
-     * 是否允许对角线移动
-     */
-    private boolean allowGiagonal = true;
-    /**
-     * 对角线移动时，当上下左右位置有阻挡时，不能去到对角位置
-     */
-    private boolean dontCrossCorners = true;
+    protected long sessionId;
 
-    private long sessionId;
-
-    private PriorityQueue<GridNode> openList = new PriorityQueue<>((o1, o2) -> {
+    protected PriorityQueue<GridNode> openList = new PriorityQueue<>((o1, o2) -> {
         double value = o1.getF() - o2.getF();
         if (value > 0)
             return 1;
@@ -43,7 +34,7 @@ public class GridAStarPathFinder {
         startNode.setG(0);
         startNode.setH(judgeCost(startNode, endNode));
         startNode.setF(startNode.getG() + startNode.getH());
-        startNode.setSessionId(sessionId);
+
         openList.add(startNode);
 
 
@@ -52,10 +43,21 @@ public class GridAStarPathFinder {
         int direction;
         while (!openList.isEmpty()) {
             pollNode = openList.poll();
+            pollNode.setSessionId(sessionId);
             for (Map.Entry<Integer, GridNode> integerGridNodeEntry : pollNode.getNeighbors().entrySet()) {
                 neighbor = integerGridNodeEntry.getValue();
                 direction = integerGridNodeEntry.getKey();
                 if (neighbor.getSessionId() == this.sessionId) {
+
+                    double newG = pollNode.getG() + (direction < 5 ? 1d : Math.sqrt(2));
+
+                    if (newG < neighbor.getG()) {
+                        neighbor.setG(newG);
+                        neighbor.setF(newG + neighbor.getH());
+                        neighbor.setParent(pollNode);
+                        openList.remove(neighbor);
+                        openList.add(neighbor);
+                    }
                     continue;
                 }
                 if (neighbor == endNode) {
@@ -64,27 +66,22 @@ public class GridAStarPathFinder {
                 }
 
                 neighbor.setSessionId(sessionId);
-                if (!allowGiagonal) {
-                    if (direction == GridNode.LEFT_BOTTOM
-                            || direction == GridNode.RIGHT_BOTTOM
-                            || direction == GridNode.RIGHT_UP
-                            || direction == GridNode.LEFT_UP
-                            || !neighbor.isWalkable()) {
-                        continue;
-                    }
-                } else {
-                    if (dontCrossCorners && !neighbor.isWalkable(direction)) {
-                        continue;
-                    }
+
+                if (!neighbor.isWalkable()) {
+                    continue;
                 }
 
                 neighbor.setParent(pollNode);
-                neighbor.setG(pollNode.getG() + direction < 5 ? 1 : 1.41);
+                neighbor.setG(pollNode.getG() + (direction < 5 ? 1d : Math.sqrt(2)));
                 neighbor.setH(judgeCost(neighbor, endNode));
                 neighbor.setF(neighbor.getG() + neighbor.getH());
-                openList.add(neighbor);
+                openList.offer(neighbor);
             }
         }
+        return floyd(getResult(startNode, endNode), gragh);
+    }
+
+    protected List<GridNode> getResult(GridNode startNode, GridNode endNode) {
         //找到路径
         if (endNode.getParent() != null) {
             List<GridNode> nodeList = new ArrayList<>();
@@ -92,7 +89,8 @@ public class GridAStarPathFinder {
                 nodeList.add(endNode);
                 endNode = endNode.getParent();
             }
-            return floyd(nodeList, gragh);
+            nodeList.add(startNode);
+            return nodeList;
         }
         return null;
     }
@@ -104,19 +102,28 @@ public class GridAStarPathFinder {
      * @param gragh
      * @return
      */
-    private List<GridNode> floyd(List<GridNode> nodeList, GridNode[][] gragh) {
+    protected List<GridNode> floyd(List<GridNode> nodeList, GridNode[][] gragh) {
+        if (nodeList == null)
+            return null;
         int size = nodeList.size();
         if (size > 2) {
+
             GridNode gridNode1 = nodeList.get(size - 1);
             GridNode gridNode2 = nodeList.get(size - 2);
             GridNode gridNode3;
+            GridNode gridNode4;
+
             //删除共线的点
             for (int i = size - 3; i >= 0; i--) {
-                gridNode3 = nodeList.get(i);
-                if (gridNode1.getX() - gridNode2.getX() == gridNode2.getX() - gridNode3.getX() &&
-                        gridNode1.getY() - gridNode2.getY() == gridNode2.getY() - gridNode3.getY()) {
-                    gridNode2 = gridNode3;
+                gridNode3 = nodeList.get(i + 1);
+                gridNode4 = nodeList.get(i);
+
+                if (gridNode1.getX() - gridNode2.getX() == gridNode3.getX() - gridNode4.getX() &&
+                        gridNode1.getY() - gridNode2.getY() == gridNode3.getY() - gridNode4.getY()) {
                     nodeList.remove(i + 1);
+                } else {
+                    gridNode1 = gridNode3;
+                    gridNode2 = gridNode4;
                 }
             }
             //判断两点间是否有阻挡
@@ -126,7 +133,7 @@ public class GridAStarPathFinder {
                 for (int j = 0; j < i - 2; j++) {
                     gridNode2 = nodeList.get(j);
                     if (!hasBarrier(gridNode1.getX(), gridNode1.getY(), gridNode2.getX(), gridNode2.getY(), gragh)) {
-                        for (int k = i - 1; k < j; k--) {
+                        for (int k = i - 1; k > j; k--) {
                             nodeList.remove(k);
                         }
                         i = j;
@@ -151,14 +158,14 @@ public class GridAStarPathFinder {
      * @param gragh
      * @return
      */
-    private boolean hasBarrier(double startX, double startY, double endX, double endY, GridNode[][] gragh) {
+    protected boolean hasBarrier(double startX, double startY, double endX, double endY, GridNode[][] gragh) {
         if (startX == endX && startY == endY) {
             return false;
         }
         //取到节点中心位置
-        double center1X = startX + 1 / 2;
+        double center1X = startX + 0.5;
         double center1Y = startY + 0.5;
-        double center2X = endX + 1 / 2;
+        double center2X = endX + 0.5;
         double center2Y = endY + 0.5;
         double distX = Math.abs(endX - startX);
         double distY = Math.abs(endY - startY);
@@ -209,7 +216,7 @@ public class GridAStarPathFinder {
      * @param gragh
      * @return
      */
-    private List<GridNode> getNodesUnderXY(double xPos, double yPos, GridNode[][] gragh) {
+    protected List<GridNode> getNodesUnderXY(double xPos, double yPos, GridNode[][] gragh) {
         tempGridNodeList.clear();
         boolean xIsInt = xPos % 1 == 0;
         boolean yIsInt = yPos % 1 == 0;
@@ -239,7 +246,7 @@ public class GridAStarPathFinder {
         return tempGridNodeList;
     }
 
-    private GridNode getNode(double v, double v1, GridNode[][] gragh) {
+    protected GridNode getNode(double v, double v1, GridNode[][] gragh) {
         return gragh[(int) v][(int) v1];
     }
 
@@ -252,13 +259,18 @@ public class GridAStarPathFinder {
      * @param xPos
      * @return
      */
-    private double getY(double center1X, double center1Y, double center2X, double center2Y, double xPos) {
+    protected double getY(double center1X, double center1Y, double center2X, double center2Y, double xPos) {
 //        xPos = (center1X + rate * center2X) / (1 + rate);
 
 //        xPos * (1 + rate) = center1X + rate * center2X;
+
 //        xPos + xPos * rate = center1X + rate * center2X;
-//        xPos * rate - rate * center2X = center1X;
-        double rate = center1X / (xPos - center2X);//被除数 不能为0
+
+//        xPos * rate - rate * center2X = center1X-xPos;
+        // rate* (xPos-center2X) = center1X-xPos;
+
+//        yPos = (center1Y + rate * center2Y) / (1 + rate);
+        double rate = (center1X - xPos) / (xPos - center2X);//被除数 不能为0
         return (center1Y + center2Y * rate) / (1 + rate);
     }
 
@@ -271,8 +283,8 @@ public class GridAStarPathFinder {
      * @param yPos
      * @return
      */
-    private double getX(double center1X, double center1Y, double center2X, double center2Y, double yPos) {
-        double rate = center1Y / (yPos - center2Y);//被除数 不能为0
+    protected double getX(double center1X, double center1Y, double center2X, double center2Y, double yPos) {
+        double rate = (center1Y - yPos) / (yPos - center2Y);//被除数 不能为0
         return (center1X + center2X * rate) / (1 + rate);
     }
 
@@ -283,7 +295,7 @@ public class GridAStarPathFinder {
      * @param to
      * @return
      */
-    public double judgeCost(GridNode from, GridNode to) {
+    protected double judgeCost(GridNode from, GridNode to) {
 
         return Math.sqrt(Math.pow(from.getX() - to.getX(), 2) + Math.pow(from.getY() - to.getY(), 2));
 
